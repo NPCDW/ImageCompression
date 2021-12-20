@@ -108,10 +108,11 @@
 
                 this.srcImageType = this.srcImageFile.type
 
+                let vm = this
                 let img = new Image();
                 img.src = this.srcImageUrl;
                 img.onload = function () {
-                    this.srcImagePixel = this.width + '×' + this.height
+                    vm.srcImagePixel = this.width + '×' + this.height
                 };
 
                 this.srcImageSize = this.srcImageFile.size < 1024 ? this.srcImageFile.size + "B" : this.srcImageFile.size / 1024 < 1024 ? (this.srcImageFile.size / 1024).toFixed(2) + "KB" : (this.srcImageFile.size / 1024 / 1024).toFixed(2) + "MB"
@@ -137,12 +138,12 @@
                         let img = new Image();
                         img.src = destImageUrl;
                         img.onload = function () {
-                            this.destImagePixel = this.width + '×' + this.height
+                            vm.destImagePixel = this.width + '×' + this.height
                         };
 
                         this.destImageSize = compressedFile.size < 1024 ? compressedFile.size + "B" : compressedFile.size / 1024 < 1024 ? (compressedFile.size / 1024).toFixed(2) + "KB" : (compressedFile.size / 1024 / 1024).toFixed(2) + "MB"
                     })
-                    .catch(function (error) {
+                    .catch(error => {
                         console.log(error.message);
                     });
             },
