@@ -7,9 +7,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>图片压缩</title>
     <script type="text/javascript" src="lib/browser-image-compression.js"></script>
+    <script type="text/javascript" src="lib/vue.js"></script>
 </head>
 
 <body style="margin: 0; padding: 0;">
+<div id="el">
     <h1 style="text-align: center;">图片压缩</h1>
     <p style="text-align: center; color: red;">没有保存，就没有泄露，本站不会保存您的任何图片资源</p>
     <p style="text-align: center; color: red;">打开该网页后，您可以断网（拔网线或开飞行模式）进行图片压缩工作</p>
@@ -18,17 +20,26 @@
             <div style="display: flex;">
                 <div style="min-width: 500px;">
                     <div style="display: flex;justify-content: center;">
-                        <img id="srcImage" src="" alt="" srcset="" style="max-height: 260px;">
+                        <div v-if="!srcImageUrl" style="border: #DDDDDD 3px dashed;height: 200px;line-height: 200px;width: 260px;position: relative">
+                            <div style="position: absolute;font-size: 40px;text-align: center;color: #DDDDDD;width: 100%;">+</div>
+                            <input type="file" accept="image/*" @change="handleImageUpload($event)" style="opacity: 0;position: absolute;width: 100%;height: 100%">
+                        </div>
+                        <div v-else style="position: relative">
+                            <img :src="srcImageUrl" :alt="srcImageName" srcset="" style="max-height: 260px;">
+                            <input type="file" accept="image/*" @change="handleImageUpload($event)" style="opacity: 0;position: absolute;top: 0;left: 0;width: 100%;height: 100%">
+                        </div>
                     </div>
                 </div>
                 <div style="flex: 1;">
                     <div style="height: 100%;display: flex;flex-direction: column;justify-content: center;">
-                        <input type="file" accept="image/*" onchange="handleImageUpload(event);">
-                        <div>大小：<span id="srcImageSize"></span></div>
-                        <div>像素：<span id="srcImagePixel"></span></div>
-                        <div>期望压缩后图片最大大小：<input id="expectCompressedImageSize" value="1" />MB</div>
-                        <div>期望压缩后图片最大像素：<input id="expectCompressedImagePixel" value="1920" /></div>
-                        <button id="reCompressed" onclick="handleImage()" style="width: 70px;display: none;">重新压缩</button>
+                        <div>名称：<span>{{ srcImageName }}</span></div>
+                        <div>大小：<span>{{ srcImageSize }}</span></div>
+                        <div>像素：<span>{{ srcImagePixel }}</span></div>
+                        <div>类型：<span>{{ srcImageType }}</span></div>
+                        <div>期望压缩后图片最大大小：<input v-model.number="expectCompressedImageSize"/>MB</div>
+                        <div>期望压缩后图片最大像素：<input v-model.number="expectCompressedImagePixel"/></div>
+                        <button @click="handleImage()" style="width: 70px;" :disabled="reCompressedButtonDisable">重新压缩
+                        </button>
                     </div>
                 </div>
             </div>
@@ -39,94 +50,109 @@
             <div style="display: flex;">
                 <div style="min-width: 500px;">
                     <div style="display: flex;justify-content: center;">
-                        <img id="destImage" src="" alt="" srcset="" style="max-height: 260px;">
+                        <div v-if="!destImageUrl" style="border: #DDDDDD 3px dashed;height: 200px;width: 260px;">
+                        </div>
+                        <img v-else :src="destImageUrl" :alt="destImageName" srcset="" style="max-height: 260px;">
                     </div>
                 </div>
                 <div style="flex: 1;">
                     <div style="height: 100%;display: flex;flex-direction: column;justify-content: center;">
-                        <button id="download" onclick="download()" style="width: 70px;display: none;">下载</button>
-                        <div>大小：<span id="destImageSize"></span></div>
-                        <div>像素：<span id="destImagePixel"></span></span></div>
+                        <div>大小：<span>{{ destImageSize }}</span></div>
+                        <div>像素：<span>{{ destImagePixel }}</span></div>
+                        <button @click="download()" style="width: 70px;" :disabled="downloadButtonDisable">下载 </button>
                     </div>
                 </div>
             </div>
         </div>
     </div>
-
-    <script>
-        let imageFile,imageUrl
-
-        function handleImageUpload(event) {
-            if (!event.target.files[0]) {
-                return
-            }
-            imageFile = event.target.files[0];
-            imageUrl = URL.createObjectURL(imageFile)
-            let srcImage = document.getElementById("srcImage")
-            srcImage.src = imageUrl
-            srcImage.alt = imageFile.name
-            handleImage();
-        }
-
-        function handleImage() {
-            let downloadButton = document.getElementById("download");
-            downloadButton.style.display = "none"
-            let reCompressedButton = document.getElementById("reCompressed");
-            reCompressedButton.style.display = "none"
-            let srcImage = document.getElementById("srcImage")
-            let destImage = document.getElementById("destImage")
-            destImage.src = ""
-
-            let img = new Image();
-            img.src = imageUrl;
-            img.onload = function () {
-                document.getElementById("srcImagePixel").innerText = this.width + '×' + this.height
-            };
-
-            document.getElementById("srcImageSize").innerText = imageFile.size < 1024 ? imageFile.size + "B" : imageFile.size / 1024 < 1024 ? (imageFile.size / 1024).toFixed(2) + "KB" : (imageFile.size / 1024 / 1024).toFixed(2) + "MB"
-
-            console.log(imageFile);
-            console.log(`originalFile size ${imageFile.size} B`);
-
-            let expectCompressedImageSize = parseFloat(document.getElementById("expectCompressedImageSize").value);
-            let expectCompressedImagePixel = parseInt(document.getElementById("expectCompressedImagePixel").value);
-
-            let options = {
-                maxSizeMB: expectCompressedImageSize,
-                maxWidthOrHeight: expectCompressedImagePixel,
-                useWebWorker: true
-            }
-            imageCompression(imageFile, options)
-                .then(function (compressedFile) {
-                    console.log(`compressedFile size ${compressedFile.size} B`); // smaller than maxSizeMB
-
-                    const destImageUrl = URL.createObjectURL(compressedFile);
-                    destImage.src = destImageUrl
-                    destImage.alt = `image_${new Date().getTime()}` + srcImage.alt.substr(srcImage.alt.lastIndexOf('.'))
-                    downloadButton.style.display = "block"
-                    reCompressedButton.style.display = "block"
-
-                    let img = new Image();
-                    img.src = destImageUrl;
-                    img.onload = function () {
-                        document.getElementById("destImagePixel").innerText = this.width + '×' + this.height
-                    };
-
-                    document.getElementById("destImageSize").innerText = compressedFile.size < 1024 ? compressedFile.size + "B" : compressedFile.size / 1024 < 1024 ? (compressedFile.size / 1024).toFixed(2) + "KB" : (compressedFile.size / 1024 / 1024).toFixed(2) + "MB"
-                })
-                .catch(function (error) {
-                    console.log(error.message);
-                });
-        }
-
-        function download() {
-            let destImage = document.getElementById("destImage")
-            let link = document.createElement('a');
-            link.download = destImage.alt;
-            link.href = destImage.src;
-            link.click();
-        }
-    </script>
+</div>
 </body>
+<script>
+    new Vue({
+        el: '#el',
+        data() {
+            return {
+                srcImageFile: null,
+                srcImageUrl: null,
+                srcImageName: null,
+                srcImageType: null,
+                srcImageSize: null,
+                srcImagePixel: null,
 
+                destImageName: null,
+                destImageUrl: null,
+                destImageSize: null,
+                destImagePixel: null,
+
+                expectCompressedImageSize: 1,
+                expectCompressedImagePixel: 1920,
+
+                downloadButtonDisable: true,
+                reCompressedButtonDisable: true,
+            }
+        },
+        methods: {
+            handleImageUpload(event) {
+                if (!event.target.files[0]) {
+                    return
+                }
+                this.srcImageFile = event.target.files[0];
+                this.srcImageUrl = URL.createObjectURL(this.srcImageFile)
+                this.srcImageName = this.srcImageFile.name
+                this.handleImage();
+            },
+            handleImage() {
+                this.downloadButtonDisable = true
+                this.reCompressedButtonDisable = true
+                this.destImageUrl = null
+
+                this.srcImageType = this.srcImageFile.type
+
+                let img = new Image();
+                img.src = this.srcImageUrl;
+                img.onload = function () {
+                    this.srcImagePixel = this.width + '×' + this.height
+                };
+
+                this.srcImageSize = this.srcImageFile.size < 1024 ? this.srcImageFile.size + "B" : this.srcImageFile.size / 1024 < 1024 ? (this.srcImageFile.size / 1024).toFixed(2) + "KB" : (this.srcImageFile.size / 1024 / 1024).toFixed(2) + "MB"
+
+                console.log(this.srcImageFile);
+                console.log(`originalFile size ${this.srcImageFile.size} B`);
+
+                let options = {
+                    maxSizeMB: this.expectCompressedImageSize,
+                    maxWidthOrHeight: this.expectCompressedImagePixel,
+                    useWebWorker: true
+                }
+                imageCompression(this.srcImageFile, options)
+                    .then(compressedFile => {
+                        console.log(`compressedFile size ${compressedFile.size} B`); // smaller than maxSizeMB
+
+                        const destImageUrl = URL.createObjectURL(compressedFile);
+                        this.destImageUrl = destImageUrl
+                        this.destImageName = `image_${new Date().getTime()}` + this.srcImageName.substr(this.srcImageName.lastIndexOf('.'))
+                        this.downloadButtonDisable = false
+                        this.reCompressedButtonDisable = false
+
+                        let img = new Image();
+                        img.src = destImageUrl;
+                        img.onload = function () {
+                            this.destImagePixel = this.width + '×' + this.height
+                        };
+
+                        this.destImageSize = compressedFile.size < 1024 ? compressedFile.size + "B" : compressedFile.size / 1024 < 1024 ? (compressedFile.size / 1024).toFixed(2) + "KB" : (compressedFile.size / 1024 / 1024).toFixed(2) + "MB"
+                    })
+                    .catch(function (error) {
+                        console.log(error.message);
+                    });
+            },
+            download() {
+                let link = document.createElement('a');
+                link.download = this.destImageName;
+                link.href = this.destImageUrl;
+                link.click();
+            }
+        }
+    })
+</script>
 </html>
