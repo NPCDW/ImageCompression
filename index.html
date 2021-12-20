@@ -28,7 +28,7 @@
                         <div>像素：<span id="srcImagePixel"></span></div>
                         <div>期望压缩后图片最大大小：<input id="expectCompressedImageSize" value="1" />MB</div>
                         <div>期望压缩后图片最大像素：<input id="expectCompressedImagePixel" value="1920" /></div>
-                        <button id="reCompressed" onclick="reHandleImage()" style="width: 70px;display: none;">重新压缩</button>
+                        <button id="reCompressed" onclick="handleImage()" style="width: 70px;display: none;">重新压缩</button>
                     </div>
                 </div>
             </div>
@@ -54,33 +54,30 @@
     </div>
 
     <script>
+        let imageFile,imageUrl
+
         function handleImageUpload(event) {
-            var imageFile = event.target.files[0];
-            var imageUrl = URL.createObjectURL(imageFile)
-            document.getElementById("srcImage").src = imageUrl
-            handleImage(imageUrl, imageFile);
+            if (!event.target.files[0]) {
+                return
+            }
+            imageFile = event.target.files[0];
+            imageUrl = URL.createObjectURL(imageFile)
+            let srcImage = document.getElementById("srcImage")
+            srcImage.src = imageUrl
+            srcImage.alt = imageFile.name
+            handleImage();
         }
 
-        function reHandleImage() {
-            var imageUrl = document.getElementById("srcImage").src
-            var xhr = new XMLHttpRequest();
-            xhr.open("get", imageUrl, true);
-            xhr.responseType = "blob";
-            xhr.onload = function () {
-                if (this.status == 200) {
-                    handleImage(imageUrl, this.response);
-                }
-            };
-            xhr.send();
-        }
-
-        function handleImage(imageUrl, imageFile) {
-            var downloadButton = document.getElementById("download");
+        function handleImage() {
+            let downloadButton = document.getElementById("download");
             downloadButton.style.display = "none"
-            var reCompressedButton = document.getElementById("reCompressed");
+            let reCompressedButton = document.getElementById("reCompressed");
             reCompressedButton.style.display = "none"
+            let srcImage = document.getElementById("srcImage")
+            let destImage = document.getElementById("destImage")
+            destImage.src = ""
 
-            var img = new Image();
+            let img = new Image();
             img.src = imageUrl;
             img.onload = function () {
                 document.getElementById("srcImagePixel").innerText = this.width + '×' + this.height
@@ -88,26 +85,28 @@
 
             document.getElementById("srcImageSize").innerText = imageFile.size < 1024 ? imageFile.size + "B" : imageFile.size / 1024 < 1024 ? (imageFile.size / 1024).toFixed(2) + "KB" : (imageFile.size / 1024 / 1024).toFixed(2) + "MB"
 
+            console.log(imageFile);
             console.log(`originalFile size ${imageFile.size} B`);
 
-            var expectCompressedImageSize = parseFloat(document.getElementById("expectCompressedImageSize").value);
-            var expectCompressedImagePixel = parseInt(document.getElementById("expectCompressedImagePixel").value);
+            let expectCompressedImageSize = parseFloat(document.getElementById("expectCompressedImageSize").value);
+            let expectCompressedImagePixel = parseInt(document.getElementById("expectCompressedImagePixel").value);
 
-            var options = {
+            let options = {
                 maxSizeMB: expectCompressedImageSize,
                 maxWidthOrHeight: expectCompressedImagePixel,
                 useWebWorker: true
             }
             imageCompression(imageFile, options)
                 .then(function (compressedFile) {
-                    console.log(`compressedFile size ${imageFile.size} B`); // smaller than maxSizeMB
+                    console.log(`compressedFile size ${compressedFile.size} B`); // smaller than maxSizeMB
 
                     const destImageUrl = URL.createObjectURL(compressedFile);
-                    document.getElementById("destImage").src = destImageUrl
+                    destImage.src = destImageUrl
+                    destImage.alt = `image_${new Date().getTime()}` + srcImage.alt.substr(srcImage.alt.lastIndexOf('.'))
                     downloadButton.style.display = "block"
                     reCompressedButton.style.display = "block"
 
-                    var img = new Image();
+                    let img = new Image();
                     img.src = destImageUrl;
                     img.onload = function () {
                         document.getElementById("destImagePixel").innerText = this.width + '×' + this.height
@@ -121,9 +120,10 @@
         }
 
         function download() {
+            let destImage = document.getElementById("destImage")
             let link = document.createElement('a');
-            link.download = `image_${new Date().getTime()}.png`;
-            link.href = document.getElementById("destImage").src;
+            link.download = destImage.alt;
+            link.href = destImage.src;
             link.click();
         }
     </script>
