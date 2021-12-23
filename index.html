@@ -35,8 +35,15 @@
                         <div>大小：<span>{{ srcImageSize }}</span></div>
                         <div>像素：<span>{{ srcImagePixel }}</span></div>
                         <div>类型：<span>{{ srcImageType }}</span></div>
-                        <div>期望压缩后图片最大大小：<input v-model.number="expectCompressedImageSize"/>MB</div>
-                        <div>期望压缩后图片最大像素：<input v-model.number="expectCompressedImagePixel"/></div>
+                        <div>
+                            期望压缩后图片最大大小：
+                            <input v-model.number="expectCompressedImageSizeMB" style="width: 40px;"/>MB
+                            <input v-model.number="expectCompressedImageSizeKB" style="margin-left: 40px;width: 40px;"/>KB
+                        </div>
+                        <div>
+                            期望压缩后图片最大像素：
+                            <input v-model.number="expectCompressedImagePixel" style="width: 40px;"/>
+                        </div>
                         <button @click="handleImage()" style="width: 70px;" :disabled="reCompressedButtonDisable">重新压缩
                         </button>
                     </div>
@@ -86,7 +93,7 @@
                 destImageSize: null,
                 destImagePixel: null,
 
-                expectCompressedImageSize: 1,
+                expectCompressedImageSizeKB: 1024,
                 expectCompressedImagePixel: 1920,
 
                 downloadButtonDisable: true,
@@ -123,7 +130,7 @@
                 console.log(`originalFile size ${this.srcImageFile.size} B`);
 
                 let options = {
-                    maxSizeMB: this.expectCompressedImageSize,
+                    maxSizeMB: this.expectCompressedImageSizeMB,
                     maxWidthOrHeight: this.expectCompressedImagePixel,
                     useWebWorker: true
                 }
@@ -154,6 +161,16 @@
                 link.download = this.destImageName;
                 link.href = this.destImageUrl;
                 link.click();
+            }
+        },
+        computed: {
+            expectCompressedImageSizeMB: {
+                get() {
+                    return Math.floor((this.expectCompressedImageSizeKB / 1024) * 10000) / 10000
+                },
+                set(newValue) {
+                    this.expectCompressedImageSizeKB = newValue * 1024
+                }
             }
         }
     })
